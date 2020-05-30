@@ -1,4 +1,4 @@
-const {Engine, Render, Runner, World, Bodies} = Matter;
+const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
 
 const width = 500;
 const height = 500;
@@ -6,6 +6,7 @@ const cells = 10;
 const unitLength = width/cells //width of one cell
 
 const engine = Engine.create();
+engine.world.gravity.y = 0;
 const {world} = engine;
 const render = Render.create({
 	element: document.body,
@@ -22,10 +23,10 @@ Runner.run(Runner.create(), engine);
 
 // Boundaries
 const boundaries = [
-	Bodies.rectangle(width/2, 0, width, 40, {isStatic: true}), //top: x, y, width of rectangle, height of rectangle
-	Bodies.rectangle(width/2, height, width, 40, {isStatic: true}), //bottom
-	Bodies.rectangle(0, height/2, 40, height, {isStatic: true}), //left
-	Bodies.rectangle(width, height/2, 40, height, {isStatic: true}), //right
+	Bodies.rectangle(width/2, 0, width, 2, {isStatic: true}), //top: x, y, width of rectangle, height of rectangle
+	Bodies.rectangle(width/2, height, width, 2, {isStatic: true}), //bottom
+	Bodies.rectangle(0, height/2, 2, height, {isStatic: true}), //left
+	Bodies.rectangle(width, height/2, 2, height, {isStatic: true}), //right
 ];
 World.add(world,boundaries);
 
@@ -62,10 +63,10 @@ const recurseMaze = (row, column) => {
 
 	//compile list of neighbours
 	const neighbours = shuffle([
-		[row - 1, column, "up"],
-		[row, column + 1, "right"],
-		[row + 1, column, "down"], 
-		[row, column - 1, "left"]
+		[row - 1, column, 'up'],
+		[row, column + 1, 'right'],
+		[row + 1, column, 'down'], 
+		[row, column - 1, 'left']
 	]);
 		
 		
@@ -78,11 +79,11 @@ const recurseMaze = (row, column) => {
       //have we visited it?
       if (grid[nextRow][nextColumn]) continue;
 
-      if (direction === "left") {
+      if (direction === 'left') {
         verticles[row][column - 1] = true;
-      } else if (direction === "right") {
+      } else if (direction === 'right') {
         verticles[row][column] = true;
-      } else if (direction === "up") {
+      } else if (direction === 'up') {
         horizontals[row - 1][column] = true;
       } else {
         horizontals[row][column] = true;
@@ -106,6 +107,7 @@ horizontals.forEach((row, rowIndex) => {
       unitLength,
       10,
       {
+        label: 'wall',
         isStatic: true,
       }
     );
@@ -124,10 +126,66 @@ verticles.forEach((row, rowIndex) => {
       10,
       unitLength,
       {
+        label: 'wall',
         isStatic: true,
       }
     );
     World.add(world, wall);
   });
 
+});
+
+
+// goal generation
+const goal = Bodies.rectangle(
+  width - unitLength / 2, //x coord of center of goal
+  height - unitLength / 2, //y coord of center of goal
+  unitLength * 0.7,
+  unitLength * 0.7,
+  {
+    label: 'goal',
+    isStatic: true,
+  }
+);
+World.add(world, goal);
+
+// ball generation
+const ball = Bodies.circle(
+  unitLength / 2,
+  unitLength / 2,
+  unitLength / 4, //radius
+  {
+    label: 'ball',
+  }
+);
+World.add(world, ball);
+
+document.addEventListener('keydown', event => {
+  const {x, y} = ball.velocity;
+  if (event.keyCode === 87 || event.keyCode === 38) { //up
+    Body.setVelocity(ball, {x, y: y - 5});
+  } else if (event.keyCode === 68 || event.keyCode === 39) { //right
+    Body.setVelocity(ball, {x: x + 5, y});
+  } else if (event.keyCode === 83 || event.keyCode === 40) { //down
+    Body.setVelocity(ball, {x, y: y + 5});
+  } else if (event.keyCode === 65 || event.keyCode === 37) { //left
+    Body.setVelocity(ball, {x: x - 5, y});
+  }
+});
+
+// win condition
+Events.on(engine, 'collisionStart', event => {
+  event.pairs.forEach((collision) => {
+    const labels = ['ball', 'goal'];
+    
+    if (labels.includes(collision.bodyA.label) && labels.includes(collision.bodyB.label)) {
+      world.gravity.y = 1;
+      world.bodies.forEach(body => {
+        if (body.label === 'wall') {
+          Body.setStatic(body, false);
+        }
+      });
+    }
+
+  });
 });
