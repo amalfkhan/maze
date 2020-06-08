@@ -1,3 +1,7 @@
+// Amal Khan - May/June 2020
+// Simple javascript maze project
+// Improvements: win graphic?
+
 const {Engine, Render, Runner, World, Bodies, Body, Events} = Matter;
 
 const width = window.innerWidth;
